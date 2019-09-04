@@ -5,6 +5,7 @@ use {
     http::{HttpTryFrom, Method, Response},
     log::*,
     serde::{Deserialize, Serialize},
+    std::pin::Pin,
 };
 
 pub trait HttpClientExt: Sized {
@@ -81,5 +82,28 @@ impl RequestBuilder {
         debug!("Received response: {} with body {}", rsp_dbg, body);
 
         Ok(serde_json::from_str::<T>(&body)?)
+    }
+}
+
+pub trait JsonBody {
+    fn body_json<T: for<'de> Deserialize<'de>>(
+        self,
+    ) -> Pin<Box<dyn Future<Output = Fallible<T>> + Send>>;
+}
+
+impl JsonBody for Response<hyper::Body> {
+    fn body_json<T: for<'de> Deserialize<'de>>(
+        self,
+    ) -> Pin<Box<dyn Future<Output = Fallible<T>> + Send>> {
+        async move {
+            let rsp_dbg = format!("{:?}", self);
+
+            let body = String::from_utf8(self.into_body().try_concat().await?.to_vec())?;
+
+            debug!("Parsing response: {} with body {}", rsp_dbg, body);
+
+            Ok(serde_json::from_str::<T>(&body)?)
+        }
+            .boxed()
     }
 }
