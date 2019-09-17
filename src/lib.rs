@@ -57,6 +57,7 @@ impl RequestBuilder {
         self
     }
     pub fn uri(mut self, uri: &str) -> Fallible<Self> {
+        debug!("Trying to parse URI: {}", uri);
         *self.uri_mut() = HttpTryFrom::try_from(uri)?;
         Ok(self)
     }
